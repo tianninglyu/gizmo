@@ -41,7 +41,8 @@ void set_cosmo_factors_for_current_time(void)
     }
     else {All.cf_atime = All.cf_a2inv = All.cf_a3inv = All.cf_hubble_a = All.cf_hubble_a2 = 1;}
 #ifdef CHIMES
-    ChimesGlobalVars.cmb_temperature = (ChimesFloat) (2.725 / All.cf_atime);
+    ChimesGlobalVars.redshift = (ChimesFloat) cooling_background_redshift();
+    ChimesGlobalVars.cmb_temperature = (ChimesFloat) (2.725 / cooling_background_scale_factor());
 #endif
 }
 

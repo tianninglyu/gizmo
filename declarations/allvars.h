@@ -623,6 +623,9 @@ extern struct global_data_all_processes
     double InterstellarRadiationFieldStrength;
     double RadiationBackgroundRedshift;
 #endif
+#ifdef COOLING
+    double CoolingRedshift; /*!< Fixed cooling-background redshift in non-comoving runs; ignored in cosmological runs. */
+#endif
 #ifdef RT_INFRARED
     double InitRadiationTemp;
 #endif

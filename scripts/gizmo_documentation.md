@@ -2698,6 +2698,12 @@ This example sets every strictly-necessary parameter if we are running a non-cos
 
 **MinGasTemp** (or `Minimum_Gas_Temperature`): The minimum allowed gas temperature in Kelvin (this is converted by the code to a minimum thermal energy per unit mass assuming the mean molecular weight of neutral gas). This may be set to zero in principle, but often it is desirable to prevent the gas from becoming too cold, e.g. for resolution reasons or because of lower limits in the implemented cooling function. (Default: `0`).
 
+**CoolingRedshift** (`COOLING` builds; default: `0`): Fixed background redshift for cooling and chemistry when `ComovingIntegrationOn=0`. For example, `CoolingRedshift 2` selects the cooling background at z=2 throughout an idealized galaxy simulation. Must be finite and non-negative. Cosmological runs ignore this parameter and continue to use z=1/a-1. This sets the TREECOOL photoionization/photoheating background, the bracketing metal-line tables and their redshift interpolation, the CMB temperature and energy density for Compton cooling, dust equilibrium and low-temperature emission corrections, and the approximate extragalactic optical/UV background.
+
+Metal tables retain their supported range (0 <= log10(1+z) <= 1), clamping to the endpoint outside that range; TREECOOL retains its high-redshift UV-off behavior. Tables must be supplied consistently for the intended UV-background model. CHIMES uses this epoch for its CMB and, when `redshift_dependent_UVB_mode` is enabled, UVB/equilibrium tables; a deliberately fixed CHIMES spectrum remains fixed. Grackle receives the same background scale factor in its existing API calls. Local stellar/AGN radiation and the ISRF normalization are not rescaled. In cooling-enabled builds this parameter supersedes `Redshift_RT_Background` for the common CMB/UV cooling epoch; RT-only builds retain that older parameter.
+
+Physical coordinates, density conversions, gravity and simulation time are unchanged. The effective cooling redshift is saved as the HDF5 header attribute `CoolingRedshift`; the snapshot's ordinary `Redshift` remains the dynamical redshift. Binary restart files must be produced with the same executable layout (the global parameter structure has changed); on restart the new parameter-file value is used.
+
 
     %---- Hydro reconstruction (kernel) parameters
     DesNumNgb               32      % domain-reconstruction kernel number: 32 standard, 60-114 for quintic

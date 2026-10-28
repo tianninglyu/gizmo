@@ -1039,7 +1039,7 @@ void get_background_isrf_urad(int i, double *urad){
         urad[k] = MIN_REAL_NUMBER;
 #ifdef RT_INFRARED
 	double fac_uCMB = 1.;
-	fac_uCMB = pow(1+All.RadiationBackgroundRedshift, 4);
+	fac_uCMB = pow(cooling_background_scale_factor(), -4);
         if(k==RT_FREQ_BIN_INFRARED){urad[k] = (All.InterstellarRadiationFieldStrength * 0.39 + fac_uCMB * 0.26) * ELECTRONVOLT_IN_ERGS / UNIT_PRESSURE_IN_CGS;} // 0.33 eV/cm^3 is dust emission peak, 0.26 is CMB - note how this bin actually lumps the two together
 #endif
 #ifdef RT_OPTICAL_NIR
@@ -1058,7 +1058,7 @@ double background_isrf_cmb_Teff(){
     // Returns the energy-weighted effective temperature of the background ISRF that has equivalent average photon energy to the sum of the ISRF and CMB
     // Necessary because current IR band treatment lumps both radiation fields together
     double urad_ISRF_CGS_eV = All.InterstellarRadiationFieldStrength * 0.39, Trad_ISRF = DMIN(All.InitRadiationTemp,100.);
-    double fac_TCMB= 1.+All.RadiationBackgroundRedshift, fac_uCMB = pow(fac_TCMB,4);
+    double fac_TCMB= 1./cooling_background_scale_factor(), fac_uCMB = pow(fac_TCMB,4);
     double urad_CMB_CGS_eV = fac_uCMB * 0.262, Trad_CMB = 2.73 * fac_TCMB;
     return (urad_ISRF_CGS_eV * Trad_ISRF + urad_CMB_CGS_eV * Trad_CMB) / (urad_ISRF_CGS_eV + urad_CMB_CGS_eV); // weighting by SED energy
 }
@@ -1327,7 +1327,7 @@ dust, and the IR radiation field component (RT_INFRARED)
 double get_min_allowed_dustIRrad_temperature(void)
 {
 #if defined(GALSF)
-    return DMAX(All.MinGasTemp, 2.73/All.cf_atime);
+    return DMAX(All.MinGasTemp, 2.73/cooling_background_scale_factor());
 #endif
     return MIN_REAL_NUMBER;
 }
@@ -1541,7 +1541,7 @@ double rt_eqm_dust_temp(int i, double T, double dust_absorption_rate)
     if(dEdt < 0)
     {
 	scalefac = 0.9;
-	double Tdust_floor = 2.73 / All.cf_atime; // CMB temperature: dust cannot radiatively cool below the ambient radiation bath, so floor the bracket search here
+	double Tdust_floor = 2.73 / cooling_background_scale_factor(); // CMB temperature at the cooling-background redshift
 	T_upper = DMIN(Tmax,Tdust), dEdt_upper = dEdt_guess;
 	while(dEdt<0 && Tdust > Tdust_floor && n_iter < MAXITER) {
 	    Tdust *= scalefac; Tdust = DMAX(Tdust,Tdust_floor);

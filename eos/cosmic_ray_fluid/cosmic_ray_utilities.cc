@@ -700,7 +700,7 @@ double return_CRbin_numberdensity_in_cgs(int target, int k_CRegy)
 /* handy function that just returns the radiation energy density in eV/cm^-3, physical units. purely here to save us time re-writing this */
 double get_cell_Urad_in_eVcm3(int i)
 {
-    double erad = 0.26*All.cf_a3inv/All.cf_atime; // default with the CMB energy density, which we assume here is a baseline minimum
+    double erad = 0.26*pow(cooling_background_scale_factor(),-4); // CMB at the same epoch as thermal cooling
 #if defined(RADTRANSFER) || defined(RT_USE_GRAVTREE_SAVE_RAD_ENERGY) // use actual explicitly-evolved radiation field, if possible
     int kfreq; double e_units = (CellP[i].Density*All.cf_a3inv/P[i].Mass) * UNIT_PRESSURE_IN_EV;
     for(kfreq=0;kfreq<N_RT_FREQ_BINS;kfreq++) {erad+=CellP[i].Rad_E_gamma_Pred[kfreq]*e_units;}

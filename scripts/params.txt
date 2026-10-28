@@ -65,6 +65,7 @@ HubbleParam                 0.7     % Hubble Parameter little 'h'; Do not set, o
 %---- (Optional) Initial hydro temperature & temperature floor (in Kelvin)
 InitGasTemp                300	    % Initial temperature: set by IC file if =0 [Default=0]
 MinGasTemp                 10.	    % Temperature floor. [Default=0]
+CoolingRedshift             0       % Fixed cooling/CMB background redshift for non-cosmological COOLING runs [Default=0; ignored in cosmological runs]
 
 %---- Hydro reconstruction (kernel) parameters
 DesNumNgb                  32      % Cell-reconstruction kernel number: 32-60 standard in 3D, 60-114 for quintic [Default=Guess for kernel]

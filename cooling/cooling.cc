@@ -33,6 +33,7 @@ static double *BetaH0, *BetaHep, *Betaff, *AlphaHp, *AlphaHep, *Alphad, *AlphaHe
 /* if this is enabled, the cooling table files should be in a folder named 'spcool_tables' in the run directory.
  cooling tables can be downloaded at: http://www.tapir.caltech.edu/~phopkins/public/spcool_tables.tgz or on the GitHub site (wiki section) */
 static float *SpCoolTable0, *SpCoolTable1;
+static int SpeciesTableLoaded = -1; // actual in-memory table; not restored from binary restart metadata
 #endif
 /* these are constants of the UV background at a given redshift: they are interpolated from TREECOOL but then not modified particle-by-particle */
 static double J_UV = 0, gJH0 = 0, gJHep = 0, gJHe0 = 0, epsH0 = 0, epsHep = 0, epsHe0 = 0;
@@ -1377,7 +1378,9 @@ void InitCoolMemory(void)
 #ifdef COOL_METAL_LINES_BY_SPECIES
     long i_nH=41; long i_T=176; long kspecies=(long)NUM_LIVE_SPECIES_FOR_COOLTABLES;
     SpCoolTable0 = (float *) mymalloc("SpCoolTable0",(kspecies*i_nH*i_T)*sizeof(float));
-    if(All.ComovingIntegrationOn) {SpCoolTable1 = (float *) mymalloc("SpCoolTable1",(kspecies*i_nH*i_T)*sizeof(float));}
+    SpCoolTable1 = (float *) mymalloc("SpCoolTable1",(kspecies*i_nH*i_T)*sizeof(float));
+    All.SpeciesTableInUse = -1;
+    SpeciesTableLoaded = -1;
 #endif
 }
 
@@ -1419,22 +1422,14 @@ void MakeCoolingTable(void)
 
 void LoadMultiSpeciesTables(void)
 {
-    if(All.ComovingIntegrationOn) {
-        int i;
-        double z;
-        if(All.Time==All.TimeBegin) {
-            All.SpeciesTableInUse=48;
-            ReadMultiSpeciesTables(All.SpeciesTableInUse);
-        }
-        z=log10(1/All.Time)*48;
-        i=(int)z;
-        if(i<48) {
-            if(i<All.SpeciesTableInUse) {
-                All.SpeciesTableInUse=i;
-                ReadMultiSpeciesTables(All.SpeciesTableInUse);
-            }}
-    } else {
-        if(All.Time==All.TimeBegin) ReadMultiSpeciesTables(0);
+    /* Tables are spaced in log10(1+z), with both endpoints included.
+     * A fixed non-cosmological redshift still needs the two bracketing tables. */
+    double z = DMAX(0., DMIN(48., -log10(cooling_background_scale_factor()) * 48.));
+    int i = (int)z;
+    All.SpeciesTableInUse = i;
+    if(i != SpeciesTableLoaded) {
+        ReadMultiSpeciesTables(i);
+        SpeciesTableLoaded = i;
     }
 }
 
@@ -1468,7 +1463,7 @@ void ReadMultiSpeciesTables(int iT)
      fread(&SpCoolTable0_He[i][j][k][l],sizeof(float),1,fdcool);
      fclose(fdcool);
      */
-    if (All.ComovingIntegrationOn && i<48) {
+    if (iT<48) {
         fname=GetMultiSpeciesFilename(iT+1,0);
         if(ThisTask == 0) printf(" ..opening (z+) Cooling Table %s \n",fname);
         if(!(fdcool = fopen(fname, "r"))) {
@@ -1546,33 +1541,26 @@ void IonizeParamsTable(void)
 {
     int i, ilow, ihi;
     double logz, dzlow, dzhi;
-    double redshift;
-
-    if(All.ComovingIntegrationOn)
-        {redshift = 1 / All.Time - 1;}
-    else
-    {
-        /* in non-cosmological mode, still use, but adopt z=0 background */
-#ifdef RT_ISRF_BACKGROUND
-	redshift = All.RadiationBackgroundRedshift;
-#else
-        redshift = 0;
-#endif
-        /*
-         gJHe0 = gJHep = gJH0 = epsHe0 = epsHep = epsH0 = J_UV = 0;
-         return;
-         */
-    }
+    double redshift = cooling_background_redshift();
 
     logz = log10(redshift + 1.0);
+    if(nheattab <= 0 || logz > inlogz[nheattab - 1])
+    {gJHe0 = gJHep = gJH0 = epsHe0 = epsHep = epsH0 = J_UV = 0; return;}
+    /* Use adjacent, in-bounds rows. The old i+1 skipped the first row above z. */
+    logz = DMAX(logz, inlogz[0]);
     ilow = 0;
-    if(nheattab <= 0) {gJHe0 = gJHep = gJH0 = epsHe0 = epsHep = epsH0 = J_UV = 0; return;}
-    for(i=0; i<nheattab; i++) {if(inlogz[i] < logz) {ilow = i;} else {break;}}
-    ihi = i + 1;
-    if(ilow >= nheattab) {ihi = i;}
+    for(i=1; i<nheattab; i++) {if(inlogz[i] <= logz) {ilow = i;} else {break;}}
+    ihi = DMIN(ilow + 1, nheattab - 1);
+    if(ihi == ilow)
+    {
+        gJH0 = JAMPL*gH0[ilow]; gJHe0 = JAMPL*gHe[ilow]; gJHep = JAMPL*gHep[ilow];
+        epsH0 = JAMPL*eH0[ilow]; epsHe0 = JAMPL*eHe[ilow]; epsHep = JAMPL*eHep[ilow];
+        J_UV = (gJH0 > 0) ? 1.e-21 : 0.;
+        return;
+    }
     dzlow = logz - inlogz[ilow];
     dzhi = inlogz[ihi] - logz;
-    if((logz > inlogz[nheattab - 1]) || (gH0[ilow] == 0) || (gH0[ihi] == 0) || (ilow > nheattab))
+    if((gH0[ilow] == 0) || (gH0[ihi] == 0))
     {
         gJHe0 = gJHep = gJH0 = epsHe0 = epsHep = epsH0 = J_UV = 0;
         return;
@@ -1613,9 +1601,9 @@ void IonizeParamsFunction(void)
     epsHe0 = epsHep = epsH0 = 0.;
 
 
-    if(All.ComovingIntegrationOn)	/* analytically compute params from power law J_nu */
+    /* Analytically compute the background at the same redshift as table cooling. */
     {
-        redshift = 1 / All.Time - 1;
+        redshift = cooling_background_redshift();
 
         if(redshift >= 6) {J_UV = 0.;}
         else
@@ -1767,7 +1755,7 @@ double GetCoolingRateWSpecies(double nHcgs, double logT, double *Z)
     int ix0, iy0, ix1, iy1;
     double dx, dy, dz, mdz;
     long i_T=iymax+1, inHT=i_T*(ixmax+1);
-    if(All.ComovingIntegrationOn && All.SpeciesTableInUse<48) {dz=log10(1/All.Time)*48; dz=dz-(int)dz; mdz=1-dz;} else {dz=0; mdz=1;}
+    if(All.SpeciesTableInUse<48) {dz=DMAX(0., DMIN(48., -log10(cooling_background_scale_factor())*48)); dz-=All.SpeciesTableInUse; mdz=1-dz;} else {dz=0; mdz=1;}
 
     dx = (log10(nHcgs)-(-8.0))/(0.0-(-8.0))*ixmax;
     dy = (logT-2.0)/(9.0-2.0)*iymax;
@@ -2065,15 +2053,12 @@ double get_equilibrium_dust_temperature_estimate(int i, double shielding_factor_
     if(i >= 0) {return CellP[i].Dust_Temperature;} // this is pre-computed -- simply return it
 #endif
     /* simple three-component model [can do fancier] with cmb, dust, high-energy photons */
-    double e_CMB=0.262*All.cf_a3inv/All.cf_atime, T_cmb=2.73/All.cf_atime; // CMB [energy in eV/cm^3, T in K]
+    double a_bg = cooling_background_scale_factor();
+    double e_CMB=0.262/pow(a_bg,4), T_cmb=2.73/a_bg; // CMB [energy in eV/cm^3, T in K]
     double e_IR=0.31, Tdust_ext=DMAX(30.,T_cmb); // Milky way ISRF from Draine (2011), assume peak of dust emission at ~100 microns
     double e_HiEgy=0.66, T_hiegy=5800.; // Milky way ISRF from Draine (2011), assume peak of stellar emission at ~0.6 microns [can still have hot dust, this effect is pretty weak]
 #ifdef RT_ISRF_BACKGROUND
     e_IR *= All.InterstellarRadiationFieldStrength; e_HiEgy *= All.InterstellarRadiationFieldStrength; // need to re-scale the assumed ISRF components
-    if(!All.ComovingIntegrationOn){
-	e_CMB *= pow(1.+All.RadiationBackgroundRedshift,4);
- 	T_cmb *= (1.+All.RadiationBackgroundRedshift);
-    }
 #endif
 
     if(i >= 0)
@@ -2096,7 +2081,7 @@ double get_equilibrium_dust_temperature_estimate(int i, double shielding_factor_
 #endif
 	double kappa_opt = 180. * Zfac * UNIT_SURFDEN_IN_CGS;
 	double tau_opt = kappa_opt*column;
-	e_HiEgy += 7.8e-3 * pow(All.cf_atime,3.9)/(1.+pow(DMAX(-1.+1./All.cf_atime,0.001)/1.7,4.4)); // extragalactic UV/optical background
+	e_HiEgy += 7.8e-3 * pow(a_bg,3.9)/(1.+pow(DMAX(-1.+1./a_bg,0.001)/1.7,4.4)); // extragalactic UV/optical background
 	absorption_rate += fac_abs * kappa_opt * (e_HiEgy/UNIT_PRESSURE_IN_EV) * exp(DMAX(-tau_opt,-100));
 	absorption_rate += fac_abs * kappa_IR * ((-0.5*expm1(DMAX(-tau_opt,-100)) * e_HiEgy + e_IR)/UNIT_PRESSURE_IN_EV); // this assumes absorbed ONIR photons are reradiated into IR, factor of 0.5 assumes 1/2 of reradiated IR photons do not go deeper into the cloud
 #endif
@@ -2118,7 +2103,7 @@ double get_equilibrium_dust_temperature_estimate(int i, double shielding_factor_
         e_IR *= E_tot_to_evol_eVcgs; e_HiEgy *= E_tot_to_evol_eVcgs;
 #endif
     }
-    e_HiEgy += shielding_factor_for_exgalbg * 7.8e-3 * pow(All.cf_atime,3.9)/(1.+pow(DMAX(-1.+1./All.cf_atime,0.001)/1.7,4.4)); // this comes from the cosmic optical+UV backgrounds. small correction, so treat simply, and ignore when self-shielded.
+    e_HiEgy += shielding_factor_for_exgalbg * 7.8e-3 * pow(a_bg,3.9)/(1.+pow(DMAX(-1.+1./a_bg,0.001)/1.7,4.4)); // cosmic optical+UV background, attenuated by self-shielding
     double Tdust_eqm = 10.; // arbitrary initial value //
     if(Tdust_ext*e_IR < 1.e-10 * (T_cmb*e_CMB + T_hiegy*e_HiEgy)) { // IR term is totally negligible [or zero exactly], use simpler expression assuming constant temperature for it to avoid sensitivity to floating-pt errors //
         Tdust_eqm = 2.92 * pow(Tdust_ext*e_IR + T_cmb*e_CMB + T_hiegy*e_HiEgy, 1./5.); // approximate equilibrium temp assuming Q~1/lambda [beta=1 opacity law], assuming background IR temp is a fixed constant [relevant in IR-thin limit, but we don't know T_rad, so this is a guess anyways]
@@ -2220,10 +2205,11 @@ double evaluate_Compton_heating_cooling_rate(int target, double T, double nHcgs,
     double Lambda = 0;
     double compton_prefac_eV = 2.16e-35 / nHcgs; // multiply field in eV/cm^3 by this and temperature difference to obtain rate
 
-    double e_CMB_eV=0.262*All.cf_a3inv/All.cf_atime, T_cmb = 2.73/All.cf_atime; // CMB [energy in eV/cm^3, T in K]
+    double a_bg = cooling_background_scale_factor();
+    double e_CMB_eV=0.262/pow(a_bg,4), T_cmb = 2.73/a_bg; // CMB [energy in eV/cm^3, T in K]
     Lambda += compton_prefac_eV * n_elec * e_CMB_eV * (T-T_cmb);
 
-    double e_UVB_eV = shielding_factor_for_exgalbg * 7.8e-3 * pow(All.cf_atime,3.9)/(1.+pow(DMAX(-1.+1./All.cf_atime,0.001)/1.7,4.4)); // this comes from the cosmic optical+UV backgrounds. small correction, so treat simply, and ignore when self-shielded.
+    double e_UVB_eV = shielding_factor_for_exgalbg * 7.8e-3 * pow(a_bg,3.9)/(1.+pow(DMAX(-1.+1./a_bg,0.001)/1.7,4.4)); // cosmic optical+UV background
     Lambda += compton_prefac_eV * n_elec * e_UVB_eV * (T-2.e4); // assume very crude approx Compton temp ~2e4 for UVB
     
 #if defined(RADTRANSFER) || defined(RT_USE_GRAVTREE_SAVE_RAD_ENERGY) // use actual explicitly-evolved radiation field, if possible
@@ -2311,17 +2297,12 @@ double evaluate_Compton_heating_cooling_rate(int target, double T, double nHcgs,
 /* this function defines an effective background radiation temperature for purposes of computing the emission corrections above */
 double get_background_radiation_temperature_for_emission_corrections(int target)
 {
-    double T_cmb = 2.73/All.cf_atime;
-#ifdef RT_ISRF_BACKGROUND
-    if(!All.ComovingIntegrationOn) {T_cmb *= 1.+All.RadiationBackgroundRedshift;}
-#endif
+    double a_bg = cooling_background_scale_factor();
+    double T_cmb = 2.73/a_bg;
 #if defined(RT_INFRARED)
     if(target >= 0)
     {
-        double e_tmp_CMB = 0.262*All.cf_a3inv/All.cf_atime;
-#ifdef RT_ISRF_BACKGROUND
-        if(!All.ComovingIntegrationOn) {e_tmp_CMB *= pow(1.+All.RadiationBackgroundRedshift,4);}
-#endif
+        double e_tmp_CMB = 0.262/pow(a_bg,4);
         double e_tot_to_evol_eVcgs = (CellP[target].Density*All.cf_a3inv/P[target].Mass) * UNIT_PRESSURE_IN_EV;
         double e_tmp_IR = CellP[target].Rad_E_gamma_Pred[RT_FREQ_BIN_INFRARED] * e_tot_to_evol_eVcgs, T_tmp_IR = CellP[target].Radiation_Temperature;
         return (e_tmp_IR * T_tmp_IR + e_tmp_CMB * T_cmb) / (e_tmp_IR + e_tmp_CMB); // if evolving IR band, use sum of it plus cmb for background

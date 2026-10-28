@@ -248,6 +248,9 @@ void begrun(void)
       All.ErrTolIntAccuracy = all.ErrTolIntAccuracy;
       All.MinGasKernelRadiusFractional = all.MinGasKernelRadiusFractional;
       All.MinGasTemp = all.MinGasTemp;
+#ifdef COOLING
+      All.CoolingRedshift = all.CoolingRedshift;
+#endif
 #ifdef CHIMES
       All.ChimesThermEvolOn = all.ChimesThermEvolOn;
 #endif
@@ -436,6 +439,20 @@ void begrun(void)
 
       if(All.TimeMax != all.TimeMax) {readjust_timebase(All.TimeMax, all.TimeMax);}
     }
+
+#ifdef COOLING
+  /* Restart restores All after InitCool: refresh the epoch and table cache
+   * before using cooling, including after changing CoolingRedshift. */
+  set_cosmo_factors_for_current_time();
+#ifndef CHIMES
+  IonizeParams();
+#ifdef COOL_METAL_LINES_BY_SPECIES
+  LoadMultiSpeciesTables();
+#endif
+#else
+  if(ChimesGlobalVars.redshift_dependent_UVB_index >= 0) {interpolate_redshift_dependent_UVB(&ChimesGlobalVars);}
+#endif
+#endif
 
 #ifdef GALSF_EFFECTIVE_EQS
   init_clouds();
@@ -1584,6 +1601,12 @@ void read_parameter_file(char *fname)
       addr[nt] = &All.MinGasTemp;
       id[nt++] = REAL;
 
+#ifdef COOLING
+      strcpy(tag[nt], "CoolingRedshift");
+      addr[nt] = &All.CoolingRedshift;
+      id[nt++] = REAL;
+#endif
+
 #ifdef DM_SCALARFIELD_SCREENING
       strcpy(tag[nt], "ScalarBeta");
       addr[nt] = &All.ScalarBeta;
@@ -2489,6 +2512,9 @@ void read_parameter_file(char *fname)
 
                 if(strcmp("Redshift_RT_Background",tag[i])==0) {*((double *)addr[i])=0.0; printf("Tag %s (%s) not set in parameter file: defaulting to assuming z=0 background radiation field \n",tag[i],alternate_tag[i]); continue;}
 #endif
+#ifdef COOLING
+                if(strcmp("CoolingRedshift",tag[i])==0) {*((double *)addr[i])=0.0; printf("Tag %s not set in parameter file: defaulting to z=0 cooling background\n",tag[i]); continue;}
+#endif
 #if defined(RT_INFRARED)
                 if(strcmp("InitRadiationTemp",tag[i])==0) {*((double *)addr[i])=20.; printf("Tag %s (%s) not set in parameter file: defaulting to assuming 20K radiation temperature \n",tag[i],alternate_tag[i]); continue;}
 #endif
@@ -2545,6 +2571,14 @@ void read_parameter_file(char *fname)
 
 #ifdef GALSF_FB_FIRE_AGE_TRACERS_CUSTOM
         errorFlag += read_agetracerlist(All.AgeTracerListFilename);
+#endif
+
+#ifdef COOLING
+        if(!isfinite(All.CoolingRedshift) || All.CoolingRedshift < 0)
+        {
+            printf("ERROR: CoolingRedshift must be finite and non-negative.\n");
+            errorFlag = 1;
+        }
 #endif
 
         if(All.OutputListOn && errorFlag == 0) {errorFlag += read_outputlist(All.OutputListFilename);} else {All.OutputListLength = 0;}

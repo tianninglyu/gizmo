@@ -93,7 +93,7 @@ double CallGrackle(double u_old, double rho, double dt, double ne_guess, int tar
     switch(mode) {
         case 0:  //solve chemistry & update values
             if(solve_chemistry(&All.GrackleUnits,
-                               All.cf_atime, dt,
+                               cooling_background_scale_factor(), dt,
                                grid_rank, grid_dimension,
                                grid_start, grid_end,
                                &density, &energy,
@@ -130,7 +130,7 @@ double CallGrackle(double u_old, double rho, double dt, double ne_guess, int tar
             break;
             
         case 1:  //cooling time
-            if(calculate_cooling_time(&All.GrackleUnits, All.cf_atime,
+            if(calculate_cooling_time(&All.GrackleUnits, cooling_background_scale_factor(),
                                       grid_rank, grid_dimension,
                                       grid_start, grid_end,
                                       &density, &energy,
@@ -147,7 +147,7 @@ double CallGrackle(double u_old, double rho, double dt, double ne_guess, int tar
             returnval = cooling_time;
             break;
         case 2:  //calculate temperature
-            if(calculate_temperature(&All.GrackleUnits, All.cf_atime,
+            if(calculate_temperature(&All.GrackleUnits, cooling_background_scale_factor(),
                                      grid_rank, grid_dimension,
                                      grid_start, grid_end,
                                      &density, &energy,
@@ -163,7 +163,7 @@ double CallGrackle(double u_old, double rho, double dt, double ne_guess, int tar
             returnval = temperature;
             break;
         case 3:  //calculate pressure
-            if(calculate_pressure(&All.GrackleUnits, All.cf_atime,
+            if(calculate_pressure(&All.GrackleUnits, cooling_background_scale_factor(),
                                   grid_rank, grid_dimension,
                                   grid_start, grid_end,
                                   &density, &energy,
@@ -179,7 +179,7 @@ double CallGrackle(double u_old, double rho, double dt, double ne_guess, int tar
             returnval = pressure;
             break;
         case 4:  //calculate gamma
-            if(calculate_gamma(&All.GrackleUnits, All.cf_atime,
+            if(calculate_gamma(&All.GrackleUnits, cooling_background_scale_factor(),
                                grid_rank, grid_dimension,
                                grid_start, grid_end,
                                &density, &energy,
@@ -201,7 +201,7 @@ double CallGrackle(double u_old, double rho, double dt, double ne_guess, int tar
     switch(mode){
         case 0:  //solve chemistry & update values (table)
             if(solve_chemistry_table(&All.GrackleUnits,
-                                     All.cf_atime, dt,
+                                     cooling_background_scale_factor(), dt,
                                      grid_rank, grid_dimension,
                                      grid_start, grid_end,
                                      &density, &energy,
@@ -226,7 +226,7 @@ double CallGrackle(double u_old, double rho, double dt, double ne_guess, int tar
             break;
         case 1:  //cooling time (table)
             if(calculate_cooling_time_table(&All.GrackleUnits,
-                                            All.cf_atime,
+                                            cooling_background_scale_factor(),
                                             grid_rank, grid_dimension,
                                             grid_start, grid_end,
                                             &density, &energy,
@@ -240,7 +240,7 @@ double CallGrackle(double u_old, double rho, double dt, double ne_guess, int tar
             break;
         case 2:  //calculate temperature (table)
             if(calculate_temperature_table(&All.GrackleUnits,
-                                           All.cf_atime,
+                                           cooling_background_scale_factor(),
                                            grid_rank, grid_dimension,
                                            grid_start, grid_end,
                                            &density, &energy,
@@ -253,7 +253,7 @@ double CallGrackle(double u_old, double rho, double dt, double ne_guess, int tar
             break;
         case 3:  //calculate pressure (table)
             if(calculate_pressure_table(&All.GrackleUnits,
-                                        All.cf_atime,
+                                        cooling_background_scale_factor(),
                                         grid_rank, grid_dimension,
                                         grid_start, grid_end,
                                         &density, &energy,
@@ -374,9 +374,8 @@ void InitGrackle(void)
     grackle_data->self_shielding_method = self_shielding_method;
 #endif
     
-    // Set initial expansion factor (for internal units).
-    // Set expansion factor to 1 for non-cosmological simulation.
-    double a_value = 1.0; if(All.ComovingIntegrationOn) {a_value = All.TimeBegin;}
+    // Background epoch only; the physical density/length units above are unchanged.
+    double a_value = cooling_background_scale_factor();
     
     // Finally, initialize the chemistry object.
 #if (COOL_GRACKLE_APIVERSION < 2)

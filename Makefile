@@ -426,6 +426,7 @@ INCL    += 	declarations/allvars.h \
 			structure/fof.h \
 			structure/subfind/subfind.h \
 			cooling/cooling.h \
+			cooling/background.h \
 			Makefile
 
 
@@ -509,6 +510,11 @@ $(OBJS): %.o: %.cc $(INCL) $(CONFIG) compile_time_info.cc
 
 compile_time_info.cc: $(CONFIG)
 	$(PERL) file_io/prepare-config.perl $(CONFIG)
+
+.PHONY: test-cooling-redshift
+test-cooling-redshift: $(OBJS)
+	$(CXX) $(CFLAGS) test/cooling_redshift/cooling_redshift_test.cc $(filter-out core/main.o cooling/cooling.o,$(OBJS)) $(LIBS) -o test/cooling_redshift/cooling_redshift_test
+	python3 test/cooling_redshift/run_tests.py test/cooling_redshift/cooling_redshift_test
 
 clean:
 	rm -f $(OBJS) $(FOBJS) $(EXEC) *.oo *.c~ compile_time_info.cc GIZMO_config.h

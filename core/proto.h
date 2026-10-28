@@ -3,6 +3,7 @@
 #endif
 #include "../gravity/forcetree.h"
 #include "../domain/domain.h"
+#include "../cooling/background.h"
 #ifdef COOLING
 #include "../cooling/cooling.h"
 #endif

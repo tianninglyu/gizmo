@@ -217,6 +217,9 @@ void set_non_standard_physics_for_current_time(void)
 #if defined(COOLING) && !defined(CHIMES)
     /* set UV background for the current time */
     IonizeParams();
+#elif defined(CHIMES)
+    /* Update globally before entering the parallel, particle-by-particle solver. */
+    if(ChimesGlobalVars.redshift_dependent_UVB_index >= 0) {interpolate_redshift_dependent_UVB(&ChimesGlobalVars);}
 #endif
 
 #if defined(COOL_METAL_LINES_BY_SPECIES) && !defined(CHIMES)

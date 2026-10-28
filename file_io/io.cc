@@ -4577,6 +4577,12 @@ void write_header_attributes_in_hdf5(hid_t handle)
     hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "ComovingIntegrationOn", H5T_NATIVE_INT, hdf5_dataspace, H5P_DEFAULT);
     H5Awrite(hdf5_attribute, H5T_NATIVE_INT, &All.ComovingIntegrationOn); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
 
+#ifdef COOLING
+    {double z_cool = cooling_background_redshift();
+        hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "CoolingRedshift", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
+        H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &z_cool); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);}
+#endif
+
     if(All.ComovingIntegrationOn)
     {
         hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "Omega_Matter", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);

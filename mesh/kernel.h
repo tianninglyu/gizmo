@@ -135,7 +135,7 @@
 #else
 #define  KERNEL_NORM  (495.0/(32.0*M_PI))	    /*!< For 3D-normalized kernel */
 #define  KERNEL_NMIN  60
-#define  KERNEL_NMAX  180
+#define  KERNEL_NMAX  220
 #endif
 #endif
 
