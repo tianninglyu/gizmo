@@ -19,6 +19,9 @@ int N_Gas_Couplings_ThisTask; // define variable to use below to record if and h
 int addFB_evaluate_active_check(int i, int fb_loop_iteration);
 int addFB_evaluate_active_check(int i, int fb_loop_iteration)
 {
+#ifdef GALSF_DISABLE_INITIAL_STAR_FEEDBACK
+    if(P[i].Type == 2) {return 0;} // also reject stored feedback budgets from a previous restart
+#endif
     if(P[i].Type <= 1) {return 0;} // note quantities used here must -not- change in the loop [hence not using mass here], b/c can change offsets for return from different processors, giving a negative mass and undefined behaviors
     if(P[i].KernelRadius <= 0) {return 0;}
     if(P[i].NumNgb <= 0) {return 0;}

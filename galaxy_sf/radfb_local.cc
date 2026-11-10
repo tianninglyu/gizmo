@@ -28,6 +28,9 @@ void radiation_pressure_winds_consolidated(void)
 
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
+#ifdef GALSF_DISABLE_INITIAL_STAR_FEEDBACK
+        if(P[i].Type == 2) {continue;} // no local radiation pressure or photoionization from IC stars
+#endif
         if((P[i].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[i].Type == 2)||(P[i].Type==3))))
         {
             if(P[i].Mass <= 0 || !isfinite(P[i].Mass)) {continue;};
@@ -229,6 +232,9 @@ void HII_heating_singledomain(void)    /* this version of the HII routine only c
 
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
+#ifdef GALSF_DISABLE_INITIAL_STAR_FEEDBACK
+        if(P[i].Type == 2) {continue;} // no local radiation pressure or photoionization from IC stars
+#endif
 #ifdef SINK_HII_HEATING
         if((P[i].Type == 5)||(((P[i].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[i].Type == 2)||(P[i].Type==3))))))
 #else

@@ -51,6 +51,13 @@
 /***********************************************************************************************************/
 int rt_get_source_luminosity(int i, int mode, double *lum)
 {
+#ifdef GALSF_DISABLE_INITIAL_STAR_FEEDBACK
+    if(P[i].Type == 2)
+    {
+        if(mode >= 0) {for(int k=0; k<N_RT_FREQ_BINS; k++) {lum[k]=0;}}
+        return 0; // exclude IC stars from tree radiation fields and explicit RT injection
+    }
+#endif
     if(!((1 << P[i].Type) & (RT_SOURCES))) {return 0;}; // boolean test of whether i is a source or not - end if not a valid source particle
     if(P[i].Mass <= 0 || !isfinite(P[i].Mass)) {return 0;} // reject invalid particles scheduled for deletion
     int active_check = 0; // default to inactive //
@@ -1698,6 +1705,14 @@ double chimes_ion_luminosity(double stellar_age, double stellar_mass) // age in 
 
 int rt_get_source_luminosity_chimes(int i, int mode, double *lum, double *chimes_lum_G0, double *chimes_lum_ion)
 {
+#ifdef GALSF_DISABLE_INITIAL_STAR_FEEDBACK
+    if(P[i].Type == 2)
+    {
+        if(mode >= 0) {for(int k=0; k<N_RT_FREQ_BINS; k++) {lum[k]=0;}}
+        for(int k=0; k<CHIMES_LOCAL_UV_NBINS; k++) {chimes_lum_G0[k]=0; chimes_lum_ion[k]=0;}
+        return 0;
+    }
+#endif
     int value_to_return = 0;
     value_to_return = rt_get_source_luminosity(i, mode, lum); // call routine as normal for all bands, before adding chimes-specific details
     if( ((P[i].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[i].Type == 2)||(P[i].Type==3)))) && (P[i].Mass>0) && (P[i].KernelRadius>0) )

@@ -200,6 +200,27 @@ void particle2in_addFB_fromstars(struct addFB_evaluate_data_in_ *in, int i, int 
     quantities from stars. */
 double mechanical_fb_calculate_eventrates(int i, double dt)
 {
+#ifdef GALSF_DISABLE_INITIAL_STAR_FEEDBACK
+    // Type-2 IC stars remain collisionless gravitating particles, without stellar feedback.
+    if(P[i].Type == 2)
+    {
+#if defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_THERMAL)
+        P[i].SNe_ThisTimeStep = 0;
+#endif
+#ifdef GALSF_FB_MECHANICAL
+#ifdef GALSF_FB_FIRE_STELLAREVOLUTION
+        P[i].MassReturn_ThisTimeStep = 0;
+#ifdef GALSF_FB_FIRE_RPROCESS
+        P[i].RProcessEvent_ThisTimeStep = 0;
+#endif
+#ifdef GALSF_FB_FIRE_AGE_TRACERS
+        P[i].AgeDeposition_ThisTimeStep = 0;
+#endif
+#endif
+#endif
+        return 0;
+    }
+#endif
 #if defined(GALSF_FB_MECHANICAL) && defined(GALSF_FB_FIRE_STELLAREVOLUTION) // FIRE-specific stellar population version: separate calculation for SNe, stellar mass loss, R-process injection //
     double SNe_rate = mechanical_fb_calculate_eventrates_SNe(i,dt);
     mechanical_fb_calculate_eventrates_Winds(i,dt);
@@ -258,7 +279,7 @@ double mechanical_fb_calculate_eventrates(int i, double dt)
 
 double mechanical_fb_calculate_eventrates_SNe(int i, double dt)
 {
-#ifdef GALSF_DISABLE_INITIAL_STAR_SN
+#if defined(GALSF_DISABLE_INITIAL_STAR_SN) || defined(GALSF_DISABLE_INITIAL_STAR_FEEDBACK)
     // Suppress both core-collapse and Ia SNe, leaving FIRE winds and other channels active.
     if(P[i].Type == 2) {P[i].SNe_ThisTimeStep = 0; return 0;}
 #endif
