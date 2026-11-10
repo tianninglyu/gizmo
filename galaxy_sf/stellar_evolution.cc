@@ -208,6 +208,11 @@ double mechanical_fb_calculate_eventrates(int i, double dt)
     return SNe_rate;
 #endif
 
+#ifdef GALSF_DISABLE_INITIAL_STAR_SN
+    // IC stars are type 2; newly formed stellar populations are type 4.
+    if(P[i].Type == 2) {P[i].SNe_ThisTimeStep = 0; return 0;}
+#endif
+
 #if defined(SINGLE_STAR_SINK_DYNAMICS) && !defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION) /* SINGLE-STAR version: simple implementation of single-star wind mass-loss and SNe rates */
     if(is_particle_single_star_eligible(i))
     {
@@ -253,6 +258,10 @@ double mechanical_fb_calculate_eventrates(int i, double dt)
 
 double mechanical_fb_calculate_eventrates_SNe(int i, double dt)
 {
+#ifdef GALSF_DISABLE_INITIAL_STAR_SN
+    // Suppress both core-collapse and Ia SNe, leaving FIRE winds and other channels active.
+    if(P[i].Type == 2) {P[i].SNe_ThisTimeStep = 0; return 0;}
+#endif
 #if defined(SINGLE_STAR_SINK_DYNAMICS) && (!defined(SINGLE_STAR_FB_SNE) || defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)) /* no single-star module to use here, for these flags its in the spawn routine */
     if(is_particle_single_star_eligible(i)) {return 0;}
 #endif
