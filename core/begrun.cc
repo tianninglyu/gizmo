@@ -86,8 +86,12 @@ void begrun(void)
 
 #ifdef Pre_SN
   if(All.ComovingIntegrationOn || NUMDIMS != 3 ||
-     !isfinite(All.PreSNCenterX) || !isfinite(All.PreSNCenterY) || All.PreSNSeed < 0)
+     !isfinite(All.PreSNCenterX) || !isfinite(All.PreSNCenterY) || !isfinite(All.PreSNCenterZ) || All.PreSNSeed < 0)
   {terminate("Pre_SN requires an isolated 3D run, a finite disc center and a nonnegative seed.");}
+  if(!isfinite(All.PreSNRadius) || All.PreSNRadius <= 0)
+  {terminate("PreSNRadius must be finite and positive.");}
+  if(!isfinite(All.PreSNHalfHeight) || All.PreSNHalfHeight < 0)
+  {terminate("PreSNHalfHeight must be finite and nonnegative.");}
 #endif
   mymalloc_init();
 
@@ -1599,6 +1603,9 @@ void read_parameter_file(char *fname)
 #ifdef Pre_SN
       strcpy(tag[nt], "PreSNCenterX"); addr[nt] = &All.PreSNCenterX; id[nt++] = REAL;
       strcpy(tag[nt], "PreSNCenterY"); addr[nt] = &All.PreSNCenterY; id[nt++] = REAL;
+      strcpy(tag[nt], "PreSNCenterZ"); addr[nt] = &All.PreSNCenterZ; id[nt++] = REAL;
+      strcpy(tag[nt], "PreSNRadius"); addr[nt] = &All.PreSNRadius; id[nt++] = REAL;
+      strcpy(tag[nt], "PreSNHalfHeight"); addr[nt] = &All.PreSNHalfHeight; id[nt++] = REAL;
       strcpy(tag[nt], "PreSNSeed"); addr[nt] = &All.PreSNSeed; id[nt++] = INT;
 #endif
       strcpy(tag[nt], "InitGasTemp");
@@ -2521,6 +2528,10 @@ void read_parameter_file(char *fname)
                 if(strcmp("InterstellarRadiationFieldStrength",tag[i])==0) {*((double *)addr[i])=1.0; printf("Tag %s (%s) not set in parameter file: defaulting to assuming Solar neighborhood (Draine) background radiation field (=%g) \n",tag[i],alternate_tag[i],All.InterstellarRadiationFieldStrength); continue;}
 
                 if(strcmp("Redshift_RT_Background",tag[i])==0) {*((double *)addr[i])=0.0; printf("Tag %s (%s) not set in parameter file: defaulting to assuming z=0 background radiation field \n",tag[i],alternate_tag[i]); continue;}
+#endif
+#ifdef Pre_SN
+                if(strcmp("PreSNHalfHeight",tag[i])==0) {All.PreSNHalfHeight=0.; continue;}
+                if(strcmp("PreSNCenterZ",tag[i])==0) {All.PreSNCenterZ=0.; continue;}
 #endif
 #ifdef COOLING
                 if(strcmp("CoolingRedshift",tag[i])==0) {*((double *)addr[i])=0.0; printf("Tag %s not set in parameter file: defaulting to z=0 cooling background\n",tag[i]); continue;}

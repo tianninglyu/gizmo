@@ -43,9 +43,11 @@ void determine_pre_sn_events(void)
 #endif
         double dt = DMIN(All.Time - All.TimeBegin, GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i));
         if(dt <= 0) {continue;}
-        double dx = (P[i].Pos[0] - All.PreSNCenterX) * UNIT_LENGTH_IN_KPC;
-        double dy = (P[i].Pos[1] - All.PreSNCenterY) * UNIT_LENGTH_IN_KPC;
-        if(dx*dx + dy*dy >= 1.) {continue;}
+        double dx = P[i].Pos[0] * UNIT_LENGTH_IN_KPC - All.PreSNCenterX;
+        double dy = P[i].Pos[1] * UNIT_LENGTH_IN_KPC - All.PreSNCenterY;
+        if(hypot(dx, dy) >= All.PreSNRadius) {continue;}
+        double dz = P[i].Pos[2] * UNIT_LENGTH_IN_KPC - All.PreSNCenterZ;
+        if(All.PreSNHalfHeight > 0 && fabs(dz) >= All.PreSNHalfHeight) {continue;}
         double rho = CellP[i].Density * UNIT_DENSITY_IN_CGS;
         if(!(rho * HYDROGEN_MASSFRAC / PROTONMASS_CGS > 0.1 && get_temperature(i) > 1.e4)) {continue;}
         double t_ff = sqrt(3. * M_PI / (32. * GRAVITY_G_CGS * rho));
