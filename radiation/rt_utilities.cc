@@ -51,6 +51,13 @@
 /***********************************************************************************************************/
 int rt_get_source_luminosity(int i, int mode, double *lum)
 {
+#ifdef Pre_SN
+    if(P[i].Type >= 2)
+    {
+        if(mode >= 0) {for(int k=0; k<N_RT_FREQ_BINS; k++) {lum[k]=0;}}
+        return 0;
+    }
+#endif
 #ifdef GALSF_DISABLE_INITIAL_STAR_FEEDBACK
     if(P[i].Type == 2)
     {
@@ -1707,6 +1714,14 @@ int rt_get_source_luminosity_chimes(int i, int mode, double *lum, double *chimes
 {
 #ifdef GALSF_DISABLE_INITIAL_STAR_FEEDBACK
     if(P[i].Type == 2)
+    {
+        if(mode >= 0) {for(int k=0; k<N_RT_FREQ_BINS; k++) {lum[k]=0;}}
+        for(int k=0; k<CHIMES_LOCAL_UV_NBINS; k++) {chimes_lum_G0[k]=0; chimes_lum_ion[k]=0;}
+        return 0;
+    }
+#endif
+#ifdef Pre_SN
+    if(P[i].Type >= 2)
     {
         if(mode >= 0) {for(int k=0; k<N_RT_FREQ_BINS; k++) {lum[k]=0;}}
         for(int k=0; k<CHIMES_LOCAL_UV_NBINS; k++) {chimes_lum_G0[k]=0; chimes_lum_ion[k]=0;}

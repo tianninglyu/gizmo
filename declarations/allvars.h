@@ -438,6 +438,10 @@ extern struct global_data_all_processes
 
   double MaxNumNgbDeviation;	/*!< Maximum allowed deviation neighbour number */
   double ArtBulkViscConst;	/*!< Sets the parameter \f$\alpha\f$ of the artificial viscosity */
+#ifdef Pre_SN
+  double PreSNCenterX, PreSNCenterY;
+  int PreSNSeed;
+#endif
   double InitGasTemp;		/*!< may be used to set the temperature in the IC's */
   double InitGasU;		/*!< the same, but converted to thermal energy per unit mass */
   double MinGasTemp;		/*!< may be used to set a floor for the gas temperature */

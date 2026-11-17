@@ -28,6 +28,7 @@
  * reached, when a `stop' file is found in the output directory, or
  * when the simulation ends because we arrived at TimeMax.
  */
+
 void run(void)
 {
     CPU_Step[CPU_MISC] += measure_time();
@@ -113,8 +114,9 @@ void run(void)
 #endif
 #endif
 
+
         /* flag particles which will be feedback centers, so kernel lengths can be computed for them */
-#ifdef GALSF_FB_MECHANICAL
+#if defined(GALSF_FB_MECHANICAL) && !defined(Pre_SN)
         determine_where_SNe_occur(); // for mechanical FB models
 #endif
 #ifdef GALSF_FB_THERMAL
@@ -308,7 +310,7 @@ void calculate_non_standard_physics(void)
 #endif
 
 
-#ifdef GALSF /* star/sink particle formation */
+#if defined(GALSF) && !defined(Pre_SN) /* star/sink particle formation */
     star_formation_parent_routine(); // top-level star formation routine (because this involves common particle conversions, want to keep this at end of this subroutine) //
     MPI_Barrier(MPI_COMM_WORLD); CPU_Step[CPU_COOLINGSFR] += measure_time(); // finish time calc for SFR+cooling
 #endif

@@ -131,6 +131,10 @@ void compute_additional_forces_for_all_particles(void)
 void compute_stellar_feedback(void)
 {
     CPU_Step[CPU_MISC] += measure_time();
+#ifdef Pre_SN
+    determine_pre_sn_events();
+    mechanical_fb_calc_toplevel();
+#else
 #ifdef GALSF_LIMIT_FBTIMESTEPS_FROM_BELOW
     if(All.Dt_Since_LastFBCalc_Gyr > All.Dt_Min_Between_FBCalc_Gyr) {All.Dt_Since_LastFBCalc_Gyr = 0;}
     All.Dt_Since_LastFBCalc_Gyr += All.TimeStep / All.cf_hubble_a * UNIT_TIME_IN_GYR; // augment by timestep
@@ -157,6 +161,7 @@ void compute_stellar_feedback(void)
     MPI_Barrier(MPI_COMM_WORLD); CPU_Step[CPU_LOCALWIND] += measure_time(); /* collect timings and reset clock for next timing */
 #endif
     
+#endif /* Pre_SN */
     CPU_Step[CPU_MISC] += measure_time();
 }
 #endif // GALSF //

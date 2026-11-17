@@ -72,6 +72,9 @@ int needs_new_treeforce(int i);
 void find_timesteps(void);
 #ifdef GALSF
 void compute_stellar_feedback(void);
+#ifdef Pre_SN
+void determine_pre_sn_events(void);
+#endif
 #endif
 void compute_hydro_densities_and_forces(void);
 void compute_grav_accelerations(void);

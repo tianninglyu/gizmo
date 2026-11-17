@@ -1,4 +1,5 @@
 #include <mpi.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -12,6 +13,59 @@
  * This file was written by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
  */
 
+#ifdef Pre_SN
+#if !defined(FIRE_PHYSICS_DEFAULTS) || FIRE_PHYSICS_DEFAULTS != 3 || !defined(GALSF_FB_MECHANICAL) || defined(GALSF_USE_SNE_ONELOOP_SCHEME) || defined(RANDOM_DISK_SN) || defined(GALSF_FB_THERMAL) || defined(GALSF_LIMIT_FBTIMESTEPS_FROM_BELOW)
+#error "Pre_SN requires FIRE-3 multi-pass mechanical feedback without other SN drivers or a minimum feedback cadence."
+#endif
+
+static double pre_sn_ejecta_mass(void)
+{
+    return 8.72 / UNIT_MASS_IN_SOLAR;
+}
+
+static uint64_t pre_sn_mix(uint64_t bits)
+{
+    bits = (bits ^ (bits >> 30)) * UINT64_C(0xbf58476d1ce4e5b9);
+    bits = (bits ^ (bits >> 27)) * UINT64_C(0x94d049bb133111eb);
+    return bits ^ (bits >> 31);
+}
+
+void determine_pre_sn_events(void)
+{
+    double stats[3] = {}, global_stats[3];
+    for(int i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
+    {
+        P[i].SNe_ThisTimeStep = 0;
+        if(P[i].Type != 0 || P[i].Mass <= pre_sn_ejecta_mass() ||
+           P[i].KernelRadius <= 0 || P[i].NumNgb <= 0) {continue;}
+#ifdef HYDRO_MESHLESS_FINITE_VOLUME
+        if(CellP[i].MassTrue <= pre_sn_ejecta_mass()) {continue;}
+#endif
+        double dt = DMIN(All.Time - All.TimeBegin, GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i));
+        if(dt <= 0) {continue;}
+        double dx = (P[i].Pos[0] - All.PreSNCenterX) * UNIT_LENGTH_IN_KPC;
+        double dy = (P[i].Pos[1] - All.PreSNCenterY) * UNIT_LENGTH_IN_KPC;
+        if(dx*dx + dy*dy >= 1.) {continue;}
+        double rho = CellP[i].Density * UNIT_DENSITY_IN_CGS;
+        if(!(rho * HYDROGEN_MASSFRAC / PROTONMASS_CGS > 0.1 && get_temperature(i) > 1.e4)) {continue;}
+        double t_ff = sqrt(3. * M_PI / (32. * GRAVITY_G_CGS * rho));
+        double probability = DMIN(1., 0.02 * dt * UNIT_TIME_IN_CGS / t_ff);
+        uint64_t key = pre_sn_mix((uint64_t) All.Ti_Current + UINT64_C(0x9e3779b97f4a7c15));
+        key ^= pre_sn_mix((uint64_t) All.PreSNSeed + UINT64_C(0xd1b54a32d192ed03));
+        double draw = (pre_sn_mix(key ^ (uint64_t) P[i].ID) >> 11) * (1.0 / 9007199254740992.0);
+        if(draw < probability) {P[i].SNe_ThisTimeStep = 1; stats[2]++;}
+        stats[0]++;
+        stats[1] += probability;
+    }
+    MPI_Reduce(stats, global_stats, 3, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+    if(ThisTask == 0 && global_stats[0] > 0)
+    {
+        printf("Pre_SN time=%.16g candidates=%.0f expected=%g triggered=%.0f\n",
+               All.Time, global_stats[0], global_stats[1], global_stats[2]);
+    }
+}
+#endif
+
 #ifdef GALSF_FB_MECHANICAL
 
 int N_Gas_Couplings_ThisTask; // define variable to use below to record if and how many times a coupling to a cell occurs in a timestep per MPI task
@@ -22,6 +76,9 @@ int addFB_evaluate_active_check(int i, int fb_loop_iteration)
 #ifdef GALSF_DISABLE_INITIAL_STAR_FEEDBACK
     if(P[i].Type == 2) {return 0;} // also reject stored feedback budgets from a previous restart
 #endif
+#ifdef Pre_SN
+    return P[i].Type == 0 && P[i].SNe_ThisTimeStep > 0 && fb_loop_iteration <= 0;
+#else
     if(P[i].Type <= 1) {return 0;} // note quantities used here must -not- change in the loop [hence not using mass here], b/c can change offsets for return from different processors, giving a negative mass and undefined behaviors
     if(P[i].KernelRadius <= 0) {return 0;}
     if(P[i].NumNgb <= 0) {return 0;}
@@ -42,9 +99,11 @@ int addFB_evaluate_active_check(int i, int fb_loop_iteration)
     if(P[i].wind_mode != 2 || P[i].ProtoStellarStage != 5) {return 0;}
 #endif
     return 0;
+#endif
 }
 
 
+#ifndef Pre_SN
 void determine_where_SNe_occur(void)
 {
     if(All.Time<=0) return;
@@ -65,7 +124,6 @@ void determine_where_SNe_occur(void)
         P[i].AgeDeposition_ThisTimeStep=0;
 #endif
 #endif
-    
 
 #if defined(SINGLE_STAR_SINK_DYNAMICS)
         if(P[i].Type == 0) {continue;} // any non-gas type is eligible to be a 'star' here
@@ -120,6 +178,7 @@ void determine_where_SNe_occur(void)
     } // if(ThisTask == 0) //
 
 } // void determine_where_SNe_occur() //
+#endif
 
 
 
@@ -127,6 +186,9 @@ void determine_where_SNe_occur(void)
  for example for ensuring conservation if there are many overlapping events */
 static struct temporary_mech_fb_data_tohold
 {
+#ifdef Pre_SN
+    double pre_sn_mass_removed;
+#endif
     int N_injected; double m_injected, p_injected[3], KE_injected, TE_injected, Z_injected[NUM_METAL_SPECIES+NUM_ADDITIONAL_PASSIVESCALAR_SPECIES_FOR_YIELDS_AND_DIFFUSION];
 #if defined(GALSF_ISMDUSTCHEM_MODEL)
     double Mass_Where_Dust_Shocked;
@@ -164,6 +226,19 @@ void particle2in_addFB(struct addFB_evaluate_data_in_ *in, int i, int loop_itera
 #endif
     for(k=0;k<AREA_WEIGHTED_SUM_ELEMENTS;k++) {in->Area_weighted_sum[k] = P[i].Area_weighted_sum[k];}
     in->Msne = 0; in->unit_mom_SNe = 0; in->SNe_v_ejecta = 0;
+#ifdef Pre_SN
+    if(P[i].Type == 0)
+    {
+        in->Msne = pre_sn_ejecta_mass();
+        in->SNe_v_ejecta = loop_iteration < 0 ? 1.e-4 :
+                          sqrt(2. * (1.e51 / UNIT_ENERGY_IN_CGS) / in->Msne);
+        in->unit_mom_SNe = in->Msne * in->SNe_v_ejecta;
+#ifdef METALS
+        for(k=0;k<NUM_METAL_SPECIES;k++) {in->yields[k] = P[i].Metallicity[k];}
+#endif
+        return;
+    }
+#endif
     if((P[i].DensityAroundParticle <= 0)||(P[i].Mass <= 0)) {return;} // events not possible [catch for mass->0]
     if(loop_iteration < 0) {in->Msne=P[i].Mass; in->unit_mom_SNe=1.e-4; in->SNe_v_ejecta=1.0e-4; return;} // weighting loop
     particle2in_addFB_fromstars(in,i,loop_iteration); // subroutine that actually deals with the assignment of feedback properties
@@ -182,6 +257,13 @@ void out2particle_addFB(struct OUTPUT_STRUCT_NAME *out, int i, int mode, int loo
 #endif
             for(k=kmin;k<kmax;k++) {ASSIGN_ADD(P[i].Area_weighted_sum[k], out->Area_weighted_sum[k], mode);}
         } else {
+#ifdef Pre_SN
+            if(P[i].Type == 0)
+            {
+                LocalGasMechFBInfoTemp[i].pre_sn_mass_removed += out->M_coupled;
+                return;
+            }
+#endif
             P[i].Mass -= out->M_coupled; if((P[i].Mass<0)||(isnan(P[i].Mass))) {P[i].Mass=0;}
 #ifdef SINGLE_STAR_FB_WINDS
             P[i].Sink_Mass -= out->M_coupled; if((P[i].Sink_Mass<0)||(isnan(P[i].Sink_Mass))) {P[i].Sink_Mass=0;}
@@ -889,7 +971,7 @@ void mechanical_fb_calc_toplevel(void)
 #endif
     mechanical_fb_calc(-1); /* compute weights for coupling [second weight-calculation pass] */
     mechanical_fb_calc(0); /* actually do the mechanical feedback coupling */
-#ifdef GALSF_FB_FIRE_STELLAREVOLUTION
+#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && !defined(Pre_SN)
     mechanical_fb_calc(1); /* additional loop for stellar mass-loss */
 #ifdef GALSF_FB_FIRE_RPROCESS
     mechanical_fb_calc(2); /* additional loop for R-process */
@@ -899,6 +981,32 @@ void mechanical_fb_calc_toplevel(void)
 #endif
 #endif
 #ifndef GALSF_USE_SNE_ONELOOP_SCHEME
+#ifdef Pre_SN
+    double stats[2] = {}, global_stats[2];
+    for(int i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
+    {
+        if(P[i].Type != 0 || P[i].SNe_ThisTimeStep <= 0) {continue;}
+        double dm = LocalGasMechFBInfoTemp[i].pre_sn_mass_removed;
+        P[i].SNe_ThisTimeStep = 0;
+        if(dm <= 0) {continue;}
+        double mass = P[i].Mass;
+        P[i].Mass -= dm;
+        for(int k=0;k<3;k++) {P[i].dp[k] -= dm * P[i].Vel[k];}
+#ifdef HYDRO_MESHLESS_FINITE_VOLUME
+        mass = CellP[i].MassTrue;
+        CellP[i].MassTrue -= dm;
+#endif
+        CellP[i].Density *= (mass - dm) / mass;
+        stats[0]++;
+        stats[1] += dm;
+    }
+    MPI_Reduce(stats, global_stats, 2, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+    if(ThisTask == 0 && global_stats[0] > 0)
+    {
+        printf("Pre_SN time=%.16g coupled=%.0f transferred_Msun=%g\n",
+               All.Time, global_stats[0], global_stats[1] * UNIT_MASS_IN_SOLAR);
+    }
+#endif
     verify_and_assign_local_mechfb_integrals();
     myfree(LocalGasMechFBInfoTemp); /* free the structure */
 #endif

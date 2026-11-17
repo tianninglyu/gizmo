@@ -84,6 +84,11 @@ void begrun(void)
 
   read_parameter_file(ParameterFile);	/* ... read in parameters for this run */
 
+#ifdef Pre_SN
+  if(All.ComovingIntegrationOn || NUMDIMS != 3 ||
+     !isfinite(All.PreSNCenterX) || !isfinite(All.PreSNCenterY) || All.PreSNSeed < 0)
+  {terminate("Pre_SN requires an isolated 3D run, a finite disc center and a nonnegative seed.");}
+#endif
   mymalloc_init();
 
 #ifdef GR_TABULATED_COSMOLOGY
@@ -1591,6 +1596,11 @@ void read_parameter_file(char *fname)
       addr[nt] = &All.G;
       id[nt++] = REAL;
 
+#ifdef Pre_SN
+      strcpy(tag[nt], "PreSNCenterX"); addr[nt] = &All.PreSNCenterX; id[nt++] = REAL;
+      strcpy(tag[nt], "PreSNCenterY"); addr[nt] = &All.PreSNCenterY; id[nt++] = REAL;
+      strcpy(tag[nt], "PreSNSeed"); addr[nt] = &All.PreSNSeed; id[nt++] = INT;
+#endif
       strcpy(tag[nt], "InitGasTemp");
       strcpy(alternate_tag[nt], "Initial_Gas_Temperature");
       addr[nt] = &All.InitGasTemp;
