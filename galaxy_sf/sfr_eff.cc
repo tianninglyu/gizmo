@@ -113,6 +113,9 @@ void assign_imf_properties_from_starforming_gas(int i, int i_star)
     random_generator_for_massivestars = gsl_rng_alloc(gsl_rng_ranlxd1);
     gsl_rng_set(random_generator_for_massivestars, P[i].ID + 121 + All.NumCurrentTiStep);
     double mu = 0.0115 * P[i].Mass * UNIT_MASS_IN_SOLAR; // 1 O-star per 100 Msun [more exactly calculated here as number of stars per solar mass with mass > 8 Msun, from our adopted Kroupa IMF from 0.01-100 Msun]
+#ifdef No_Delay_SN
+    if(P[i_star].PromptSNState == 1) {mu = 0.0115 * P[i_star].Mass * UNIT_MASS_IN_SOLAR;}
+#endif
     unsigned int kk = gsl_ran_poisson(random_generator_for_massivestars, mu);
     P[i_star].IMF_NumMassiveStars = (double)kk;
 #ifdef GALSF_SFR_IMF_SAMPLING_DISTRIBUTE_SF
@@ -565,6 +568,9 @@ void star_formation_parent_routine(void)
                         /* ok, we're going to make a star!  -- assign all the properties we need now */
                         sum_mass_stars += P[i_star].Mass;
                         P[i_star].StellarAge = All.Time;
+#ifdef No_Delay_SN
+                        P[i_star].PromptSNState = (All.Time - All.TimeBegin) * UNIT_TIME_IN_MYR < All.NoDelaySNDurationMyr;
+#endif
 #if defined(GALSF_SFR_IMF_VARIATION) || defined(GALSF_SFR_IMF_SAMPLING)
                         /* if we're allowing for a variable IMF, this is where we will calculate the IMF properties produced from the gas forming stars */
                         assign_imf_properties_from_starforming_gas(i, i_star);

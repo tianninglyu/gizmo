@@ -73,6 +73,9 @@ extern ALIGN(32) struct particle_data
     
 #ifdef GALSF
     MyFloat StellarAge;        /*!< formation time of star particle */
+#ifdef No_Delay_SN
+    unsigned char PromptSNState; /* 0: ordinary population, 1: prompt sampling pending, 2: prompt event this step, 3: prompt budget spent */
+#endif
 #endif
 #ifdef METALS
     MyFloat Metallicity[NUM_METAL_SPECIES]; /*!< metallicity (species-by-species) of gas or star particle */

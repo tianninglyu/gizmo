@@ -93,6 +93,10 @@ void begrun(void)
   if(!isfinite(All.PreSNHalfHeight) || All.PreSNHalfHeight < 0)
   {terminate("PreSNHalfHeight must be finite and nonnegative.");}
 #endif
+#ifdef No_Delay_SN
+  if(All.ComovingIntegrationOn || !isfinite(All.NoDelaySNDurationMyr) || All.NoDelaySNDurationMyr < 0)
+  {terminate("No_Delay_SN requires an isolated run and a finite nonnegative NoDelaySNDurationMyr.");}
+#endif
   mymalloc_init();
 
 #ifdef GR_TABULATED_COSMOLOGY
@@ -1600,6 +1604,9 @@ void read_parameter_file(char *fname)
       addr[nt] = &All.G;
       id[nt++] = REAL;
 
+#ifdef No_Delay_SN
+      strcpy(tag[nt], "NoDelaySNDurationMyr"); addr[nt] = &All.NoDelaySNDurationMyr; id[nt++] = REAL;
+#endif
 #ifdef Pre_SN
       strcpy(tag[nt], "PreSNCenterX"); addr[nt] = &All.PreSNCenterX; id[nt++] = REAL;
       strcpy(tag[nt], "PreSNCenterY"); addr[nt] = &All.PreSNCenterY; id[nt++] = REAL;
@@ -2528,6 +2535,9 @@ void read_parameter_file(char *fname)
                 if(strcmp("InterstellarRadiationFieldStrength",tag[i])==0) {*((double *)addr[i])=1.0; printf("Tag %s (%s) not set in parameter file: defaulting to assuming Solar neighborhood (Draine) background radiation field (=%g) \n",tag[i],alternate_tag[i],All.InterstellarRadiationFieldStrength); continue;}
 
                 if(strcmp("Redshift_RT_Background",tag[i])==0) {*((double *)addr[i])=0.0; printf("Tag %s (%s) not set in parameter file: defaulting to assuming z=0 background radiation field \n",tag[i],alternate_tag[i]); continue;}
+#endif
+#ifdef No_Delay_SN
+                if(strcmp("NoDelaySNDurationMyr",tag[i])==0) {All.NoDelaySNDurationMyr=250.; continue;}
 #endif
 #ifdef Pre_SN
                 if(strcmp("PreSNHalfHeight",tag[i])==0) {All.PreSNHalfHeight=0.; continue;}
