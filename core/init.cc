@@ -247,11 +247,17 @@ void init(void)
         P[i].Potential = 0;
 #endif
 #ifdef GALSF
+#ifdef No_Delay_SN
+        if(P[i].PromptSNState == 0)
+#endif
         if(RestartFlag == 0) {P[i].StellarAge = 0;}
 #ifdef GALSF_SFR_IMF_VARIATION
         if(RestartFlag == 0) {P[i].IMF_Mturnover = 2.0;} /* gives a solar-type IMF for our calculations in current code */
 #endif
 #ifdef GALSF_SFR_IMF_SAMPLING
+#ifdef No_Delay_SN
+        if(P[i].PromptSNState == 0)
+#endif
         if(RestartFlag == 0) {P[i].IMF_NumMassiveStars = 0;}
 #if defined(SINGLE_STAR_AND_SSP_HYBRID_MODEL) && defined(SINGLE_STAR_RESTART_FROM_FIRESIM)
         if(RestartFlag == 2) {P[i].IMF_NumMassiveStars = 0;}
@@ -285,9 +291,6 @@ void init(void)
 #endif
 #if defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_THERMAL)
             P[i].SNe_ThisTimeStep = 0;
-#ifdef No_Delay_SN
-            P[i].PromptSNState = 0;
-#endif
 #endif
 #ifdef GALSF_FB_MECHANICAL
             int k; for(k=0;k<AREA_WEIGHTED_SUM_ELEMENTS;k++) {P[i].Area_weighted_sum[k] = 0;}
@@ -310,6 +313,9 @@ void init(void)
         }
 
 #if defined(INIT_STELLAR_METALS_AGES_DEFINED) && defined(GALSF)
+#ifdef No_Delay_SN
+        if(P[i].PromptSNState == 0)
+#endif
         if(RestartFlag == 0) {P[i].StellarAge = -2.0 * All.InitStellarAgeinGyr / (UNIT_TIME_IN_GYR) * get_random_number(P[i].ID + 3);}
 #endif
         

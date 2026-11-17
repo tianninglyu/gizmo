@@ -20,7 +20,20 @@ events retain their usual delay distribution. The experiment in
 delay after the switch and sampled one progenitor per 100 solar masses
 on average.
 
-Use the same executable to cross the window boundary. Continue interrupted
-runs with native restart files, which retain the per-star prompt state.
-Snapshots do not retain that state, so starting a new run from them can
-repeat core-collapse feedback for young stars.
+Use native restart files for a full continuation. Snapshots are written in
+HDF5 (`SnapFormat 3`) and store the prompt state as
+`PartType4/PromptSNState`: 0 for ordinary populations, 1 for a pending
+prompt event, and 3 for a population whose prompt budget has been sampled.
+
+For merger initial conditions, concatenate this field in the same order
+as the Type 4 particles, along with `StellarFormationTime` and
+`OStarNumber`. Keep stellar ages consistent with the merger clock. If
+resetting time, add `merger_TimeBegin - source_snapshot_Time` to each
+source's formation times. Keep the resulting stars as Type 4, use HDF5
+(`ICFormat 3`), and keep `No_Delay_SN` compiled in with
+`NoDelaySNDurationMyr 0` for normal feedback on new stars. Pending prompt
+events still run and spent populations do not draw again. Type 4 particles
+with prompt history are excluded from numerical particle merging.
+
+Older snapshots without the field load with state 0. The code cannot
+recover prompt feedback history that those files did not save.

@@ -481,6 +481,18 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 #endif
             break;
 
+        case IO_PROMPT_SN_STATE:
+#ifdef No_Delay_SN
+            for(n = 0; n < pc; pindex++)
+                if(P[pindex].Type == type)
+                {
+                    // State 2 is transient within a feedback step. Save it as spent.
+                    *ip_int++ = P[pindex].PromptSNState == 2 ? 3 : P[pindex].PromptSNState;
+                    n++;
+                }
+#endif
+            break;
+
         case IO_OSTAR:
 #ifdef GALSF_SFR_IMF_SAMPLING
             for(n = 0; n < pc; pindex++)
@@ -1834,6 +1846,10 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
                 bytes_per_blockelement = 3 * sizeof(MyOutputFloat);
             break;
 
+        case IO_PROMPT_SN_STATE:
+            bytes_per_blockelement = sizeof(unsigned int);
+            break;
+
         case IO_ID:
         case IO_CHILD_ID:
         case IO_GENERATION_ID:
@@ -2150,6 +2166,7 @@ int get_datatype_in_block(enum iofields blocknr)
             break;
 #endif
 
+        case IO_PROMPT_SN_STATE:
         case IO_SINKPROGS:
         case IO_GRAINTYPE:
         case IO_EOSCOMP:
@@ -2214,6 +2231,7 @@ int get_values_per_blockelement(enum iofields blocknr)
         case IO_KERNELRADIUS:
         case IO_SFR:
         case IO_AGE:
+        case IO_PROMPT_SN_STATE:
         case IO_OSTAR:
         case IO_DTOSTAR:
         case IO_GRAINSIZE:
@@ -2577,6 +2595,7 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
             return nstars_tot;
             break;
 
+        case IO_PROMPT_SN_STATE:
         case IO_OSTAR:
         case IO_DTOSTAR:
         case IO_HSMS:
@@ -2967,6 +2986,12 @@ int blockpresent(enum iofields blocknr)
 
         case IO_IMF:
 #ifdef GALSF_SFR_IMF_VARIATION
+            return 1;
+#endif
+            break;
+
+        case IO_PROMPT_SN_STATE:
+#ifdef No_Delay_SN
             return 1;
 #endif
             break;
@@ -3476,6 +3501,9 @@ void get_Tab_IO_Label(enum iofields blocknr, char *label)
         case IO_IMF:
             strncpy(label, "IMF ", 4);
             break;
+        case IO_PROMPT_SN_STATE:
+            strncpy(label, "PSNS", 4);
+            break;
         case IO_OSTAR:
             strncpy(label, "NOST", 4);
             break;
@@ -3905,6 +3933,9 @@ void get_dataset_name(enum iofields blocknr, char *buf)
             break;
         case IO_IMF:
             strcpy(buf, "IMFFormationProperties");
+            break;
+        case IO_PROMPT_SN_STATE:
+            strcpy(buf, "PromptSNState");
             break;
         case IO_OSTAR:
             strcpy(buf, "OStarNumber");

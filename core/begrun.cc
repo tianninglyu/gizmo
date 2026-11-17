@@ -96,6 +96,7 @@ void begrun(void)
 #ifdef No_Delay_SN
   if(All.ComovingIntegrationOn || !isfinite(All.NoDelaySNDurationMyr) || All.NoDelaySNDurationMyr < 0)
   {terminate("No_Delay_SN requires an isolated run and a finite nonnegative NoDelaySNDurationMyr.");}
+  if(All.SnapFormat != 3) {terminate("No_Delay_SN requires SnapFormat 3 to save prompt SN state.");}
 #endif
   mymalloc_init();
 

@@ -311,7 +311,12 @@ void merge_and_split_particles(void)
                     threshold_val = MAX_REAL_NUMBER;
                     for(n=0; n<numngb_inbox; n++) /* loop over neighbors */
                     {
-                        j = Ngblist[n]; double m_eff = P[j].Mass; int do_allow_merger = 0; // boolean flag to check
+                        j = Ngblist[n];
+#ifdef No_Delay_SN
+                        // A merged particle cannot represent two independent prompt SN histories.
+                        if(P[i].Type == 4 && (P[i].PromptSNState || P[j].PromptSNState)) {continue;}
+#endif
+                        double m_eff = P[j].Mass; int do_allow_merger = 0; // boolean flag to check
                         if((P[j].Mass >= P[i].Mass) && (P[i].Mass+P[j].Mass < All.MaxMassForParticleSplit)) {do_allow_merger = 1;}
 #ifdef GALSF_MERGER_STARCLUSTER_PARTICLES
                         if(P[i].Type==4 && P[j].Type==4) {m_eff=evaluate_starstar_merger_for_starcluster_particle_pair(i,j); if(m_eff<=0) {do_allow_merger=0;} else {do_allow_merger=1;}}

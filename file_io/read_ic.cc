@@ -553,6 +553,17 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
 #endif
             break;
 
+        case IO_PROMPT_SN_STATE:
+#ifdef No_Delay_SN
+            for(n = 0; n < pc; n++)
+            {
+                unsigned int value = ((unsigned int *)CommBuffer)[n];
+                if(value > 3) {terminate("Invalid PromptSNState in stellar input particles.");}
+                P[offset + n].PromptSNState = value == 2 ? 3 : value;
+            }
+#endif
+            break;
+
         case IO_OSTAR:
 #ifdef GALSF_SFR_IMF_SAMPLING
              for(n = 0; n < pc; n++) {P[offset + n].IMF_NumMassiveStars = *fp++;}
@@ -908,6 +919,9 @@ void read_file(char *fname, int readTask, int lastTask)
 
     memmove(&P[N_gas + nall], &P[N_gas], (NumPart - N_gas) * sizeof(struct particle_data));
     nstart = N_gas;
+#ifdef No_Delay_SN
+    for(long n = 0; n < nall; n++) {P[nstart + n].PromptSNState = 0;}
+#endif
 
 
     for(bnr = 0; bnr < 1000; bnr++)
@@ -921,6 +935,9 @@ void read_file(char *fname, int readTask, int lastTask)
                 /* blocks only for restartflag == 0 */
                 if(RestartFlag == 0 && blocknr > IO_U
                    && blocknr != IO_BFLD
+#ifdef No_Delay_SN
+                   && !(All.ICFormat == 3 && (blocknr == IO_PROMPT_SN_STATE || blocknr == IO_AGE || blocknr == IO_OSTAR))
+#endif
 #ifdef INPUT_READ_KERNELRADIUS
                    && blocknr != IO_KERNELRADIUS
 #endif
@@ -1047,6 +1064,9 @@ void read_file(char *fname, int readTask, int lastTask)
 #endif
 #endif
             
+#ifdef No_Delay_SN
+            if(blocknr == IO_PROMPT_SN_STATE && All.ICFormat != 3) {continue;}
+#endif
             if(blocknr == IO_HSMS) {continue;}
 
 #ifdef TURB_DIFF_DYNAMIC
@@ -1135,6 +1155,17 @@ void read_file(char *fname, int readTask, int lastTask)
                                     if(All.ICFormat == 3 && pc > 0)
                                     {
                                         get_dataset_name(blocknr, buf);
+#ifdef No_Delay_SN
+                                        bool optional_dataset = blocknr == IO_PROMPT_SN_STATE ||
+                                            (RestartFlag == 0 && (blocknr == IO_AGE || blocknr == IO_OSTAR));
+                                        if(optional_dataset && H5Lexists(hdf5_grp[type], buf, H5P_DEFAULT) == 0)
+                                        {
+                                            memset(CommBuffer, 0, bytes_per_blockelement * pc);
+                                            pcsum += pc;
+                                        }
+                                        else
+                                        {
+#endif
                                         hdf5_dataset = H5Dopen(hdf5_grp[type], buf);
 
                                         dims[0] = header.npart[type];
@@ -1198,6 +1229,26 @@ void read_file(char *fname, int readTask, int lastTask)
                                         H5Sclose(hdf5_dataspace_in_memory);
                                         H5Sclose(hdf5_dataspace_in_file);
                                         H5Dclose(hdf5_dataset);
+#ifdef No_Delay_SN
+                                        if(blocknr == IO_PROMPT_SN_STATE)
+                                        {
+                                            bool has_ages = H5Lexists(hdf5_grp[type], "StellarFormationTime", H5P_DEFAULT) > 0;
+#ifdef GALSF_SFR_IMF_SAMPLING
+                                            bool has_ostar = H5Lexists(hdf5_grp[type], "OStarNumber", H5P_DEFAULT) > 0;
+#endif
+                                            for(int n = 0; n < pc; n++)
+                                            {
+                                                unsigned int state = ((unsigned int *)CommBuffer)[n];
+                                                if(state && !has_ages)
+                                                {terminate("PromptSNState requires StellarFormationTime in the input snapshot.");}
+#ifdef GALSF_SFR_IMF_SAMPLING
+                                                if(state == 1 && !has_ostar)
+                                                {terminate("Pending PromptSNState requires OStarNumber in the input snapshot.");}
+#endif
+                                            }
+                                        }
+                                        }
+#endif
                                     }
 
                                 }
