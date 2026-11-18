@@ -278,8 +278,8 @@ double mechanical_fb_calculate_eventrates(int i, double dt)
 /* functions below contain pre-calculation of event rates and energetics, masses, etc, for FIRE mechanical feedback modules */
 
 #ifdef No_Delay_SN
-#if !defined(FIRE_PHYSICS_DEFAULTS) || FIRE_PHYSICS_DEFAULTS != 3 || !defined(GALSF_FB_MECHANICAL) || defined(Pre_SN) || defined(GALSF_FB_THERMAL) || defined(SINGLE_STAR_SINK_DYNAMICS) || defined(GALSF_SFR_IMF_SAMPLING_DISTRIBUTE_SF) || defined(GALSF_SFR_IMF_VARIATION) || defined(GALSF_MERGER_STARCLUSTER_PARTICLES) || defined(GALSF_LIMIT_FBTIMESTEPS_FROM_BELOW)
-#error "No_Delay_SN requires the standard FIRE-3 stellar population and mechanical feedback, without Pre_SN."
+#if !defined(FIRE_PHYSICS_DEFAULTS) || (FIRE_PHYSICS_DEFAULTS != 2 && FIRE_PHYSICS_DEFAULTS != 3) || !defined(GALSF_FB_MECHANICAL) || defined(Pre_SN) || defined(GALSF_FB_THERMAL) || defined(SINGLE_STAR_SINK_DYNAMICS) || defined(GALSF_SFR_IMF_SAMPLING_DISTRIBUTE_SF) || defined(GALSF_SFR_IMF_VARIATION) || defined(GALSF_MERGER_STARCLUSTER_PARTICLES) || defined(GALSF_LIMIT_FBTIMESTEPS_FROM_BELOW)
+#error "No_Delay_SN requires standard FIRE-2 or FIRE-3 stellar populations and mechanical feedback, without Pre_SN."
 #endif
 #endif
 
@@ -301,7 +301,17 @@ double mechanical_fb_calculate_eventrates_SNe(int i, double dt)
     {
         // Extend the paper's Bernoulli draw to stellar populations above 100 solar masses.
         double mass_solar = P[i].Mass * UNIT_MASS_IN_SOLAR;
+#if FIRE_PHYSICS_DEFAULTS == 2
+        // Integrate the two FIRE-2 core-collapse rates (SN/Myr/solar mass).
+        double sn_per_mass = 1000. * (5.408e-4 * (0.01037 - 0.003401)
+                                    + 2.516e-4 * (0.03753 - 0.01037));
+        double expected = sn_per_mass * mass_solar;
+        double count = floor(expected);
+        if(get_random_number(P[i].ID+6) < expected - count) {count++;}
 #ifdef GALSF_SFR_IMF_SAMPLING
+        P[i].IMF_NumMassiveStars = count; // keep optional IMF bookkeeping consistent
+#endif
+#elif defined(GALSF_SFR_IMF_SAMPLING)
         double expected = 0.0115 * mass_solar;
         double count = P[i].IMF_NumMassiveStars;
 #else
@@ -313,7 +323,12 @@ double mechanical_fb_calculate_eventrates_SNe(int i, double dt)
         P[i].PromptSNState = 2;
         return expected / (mass_solar * dt * UNIT_TIME_IN_MYR);
     }
-    if(P[i].PromptSNState == 3 && star_age <= 0.044) {return 0;} // core-collapse budget already sampled
+#if FIRE_PHYSICS_DEFAULTS == 2
+    double prompt_cc_end = 0.03753;
+#else
+    double prompt_cc_end = 0.044;
+#endif
+    if(P[i].PromptSNState == 3 && star_age <= prompt_cc_end) {return 0;} // core-collapse budget already sampled
 #endif
     /* here we are determining an expected SNe rate, so SNe occur stochastically but with an age dependence in the population */
     // calculate: NSNe/Myr *if* each SNe had exactly 10^51 ergs; really from the energy curve [do this so we are gauranteed to get the correct SNe energy] //
@@ -543,7 +558,7 @@ void particle2in_addFB_SNe(struct addFB_evaluate_data_in_ *in, int i)
     double t_gyr = evaluate_stellar_age_Gyr(i);
 #ifdef No_Delay_SN
     bool prompt_core_collapse = P[i].PromptSNState == 2;
-    if(prompt_core_collapse) {t_gyr = 0.010;} // representative age for FIRE-3 ejecta yields
+    if(prompt_core_collapse) {t_gyr = 0.010;} // representative core-collapse age for the selected FIRE yields
 #endif
     int SNeIaFlag=0; if(t_gyr > 0.03753) {SNeIaFlag=1;}; /* assume SNe before critical time are core-collapse, later are Ia */
     double Msne=10.5; if(SNeIaFlag) {Msne=1.4;} // average ejecta mass for single event (normalized to give total mass loss correctly)
