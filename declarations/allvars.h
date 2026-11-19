@@ -438,6 +438,9 @@ extern struct global_data_all_processes
 
   double MaxNumNgbDeviation;	/*!< Maximum allowed deviation neighbour number */
   double ArtBulkViscConst;	/*!< Sets the parameter \f$\alpha\f$ of the artificial viscosity */
+#ifdef GALSF_FB_THERMAL
+  double ThermalFBDelayMyr; /* stellar age threshold in physical Myr; default 5, zero for prompt feedback */
+#endif
 #ifdef No_Delay_SN
   double NoDelaySNDurationMyr;
 #endif

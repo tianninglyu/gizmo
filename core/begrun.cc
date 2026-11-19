@@ -98,6 +98,10 @@ void begrun(void)
   {terminate("No_Delay_SN requires an isolated run and a finite nonnegative NoDelaySNDurationMyr.");}
   if(All.SnapFormat != 3) {terminate("No_Delay_SN requires SnapFormat 3 to save prompt SN state.");}
 #endif
+#ifdef GALSF_FB_THERMAL
+  if(!isfinite(All.ThermalFBDelayMyr) || All.ThermalFBDelayMyr < 0)
+  {terminate("ThermalFBDelayMyr must be finite and nonnegative.");}
+#endif
   mymalloc_init();
 
 #ifdef GR_TABULATED_COSMOLOGY
@@ -262,6 +266,9 @@ void begrun(void)
       All.ErrTolIntAccuracy = all.ErrTolIntAccuracy;
       All.MinGasKernelRadiusFractional = all.MinGasKernelRadiusFractional;
       All.MinGasTemp = all.MinGasTemp;
+#ifdef GALSF_FB_THERMAL
+      All.ThermalFBDelayMyr = all.ThermalFBDelayMyr;
+#endif
 #ifdef COOLING
       All.CoolingRedshift = all.CoolingRedshift;
 #endif
@@ -1605,6 +1612,9 @@ void read_parameter_file(char *fname)
       addr[nt] = &All.G;
       id[nt++] = REAL;
 
+#ifdef GALSF_FB_THERMAL
+      strcpy(tag[nt], "ThermalFBDelayMyr"); addr[nt] = &All.ThermalFBDelayMyr; id[nt++] = REAL;
+#endif
 #ifdef No_Delay_SN
       strcpy(tag[nt], "NoDelaySNDurationMyr"); addr[nt] = &All.NoDelaySNDurationMyr; id[nt++] = REAL;
 #endif
@@ -2536,6 +2546,9 @@ void read_parameter_file(char *fname)
                 if(strcmp("InterstellarRadiationFieldStrength",tag[i])==0) {*((double *)addr[i])=1.0; printf("Tag %s (%s) not set in parameter file: defaulting to assuming Solar neighborhood (Draine) background radiation field (=%g) \n",tag[i],alternate_tag[i],All.InterstellarRadiationFieldStrength); continue;}
 
                 if(strcmp("Redshift_RT_Background",tag[i])==0) {*((double *)addr[i])=0.0; printf("Tag %s (%s) not set in parameter file: defaulting to assuming z=0 background radiation field \n",tag[i],alternate_tag[i]); continue;}
+#endif
+#ifdef GALSF_FB_THERMAL
+                if(strcmp("ThermalFBDelayMyr",tag[i])==0) {All.ThermalFBDelayMyr=5.; printf("Tag ThermalFBDelayMyr not set: defaulting to 5 Myr thermal feedback delay\n"); continue;}
 #endif
 #ifdef No_Delay_SN
                 if(strcmp("NoDelaySNDurationMyr",tag[i])==0) {All.NoDelaySNDurationMyr=250.; continue;}

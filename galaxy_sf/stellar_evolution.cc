@@ -250,9 +250,9 @@ double mechanical_fb_calculate_eventrates(int i, double dt)
     }
 #endif
 
-#ifdef GALSF_FB_THERMAL /* STELLAR-POPULATION version: pure thermal feedback: assumes AGORA model (Kim et al., 2016 ApJ, 833, 202) where everything occurs at 5Myr exactly */
+#ifdef GALSF_FB_THERMAL /* STELLAR-POPULATION version: pure thermal feedback: uses a configurable delay (default 5 Myr, as in AGORA; Kim et al., 2016 ApJ, 833, 202) */
     if(P[i].SNe_ThisTimeStep != 0) {P[i].SNe_ThisTimeStep=-1; return 0;} // already had an event, so this particle is "done"
-    if(evaluate_stellar_age_Gyr(i) < 0.005) {return 0;} // enforce age limit of 5 Myr
+    if(evaluate_stellar_age_Gyr(i) < All.ThermalFBDelayMyr * 0.001) {return 0;} // physical Myr -> Gyr; zero allows prompt feedback
     P[i].SNe_ThisTimeStep = P[i].Mass*UNIT_MASS_IN_SOLAR / 91.; // 1 event per 91 solar masses
     return 1;
 #endif
