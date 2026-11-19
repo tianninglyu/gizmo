@@ -481,6 +481,17 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 #endif
             break;
 
+        case IO_THERMAL_FB_STATE:
+#ifdef GALSF_FB_THERMAL
+            for(n = 0; n < pc; pindex++)
+                if(P[pindex].Type == type)
+                {
+                    *ip_int++ = P[pindex].SNe_ThisTimeStep != 0 ? 1 : 0;
+                    n++;
+                }
+#endif
+            break;
+
         case IO_PROMPT_SN_STATE:
 #ifdef No_Delay_SN
             for(n = 0; n < pc; pindex++)
@@ -1846,6 +1857,7 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
                 bytes_per_blockelement = 3 * sizeof(MyOutputFloat);
             break;
 
+        case IO_THERMAL_FB_STATE:
         case IO_PROMPT_SN_STATE:
             bytes_per_blockelement = sizeof(unsigned int);
             break;
@@ -2166,6 +2178,7 @@ int get_datatype_in_block(enum iofields blocknr)
             break;
 #endif
 
+        case IO_THERMAL_FB_STATE:
         case IO_PROMPT_SN_STATE:
         case IO_SINKPROGS:
         case IO_GRAINTYPE:
@@ -2231,6 +2244,7 @@ int get_values_per_blockelement(enum iofields blocknr)
         case IO_KERNELRADIUS:
         case IO_SFR:
         case IO_AGE:
+        case IO_THERMAL_FB_STATE:
         case IO_PROMPT_SN_STATE:
         case IO_OSTAR:
         case IO_DTOSTAR:
@@ -2595,6 +2609,7 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
             return nstars_tot;
             break;
 
+        case IO_THERMAL_FB_STATE:
         case IO_PROMPT_SN_STATE:
         case IO_OSTAR:
         case IO_DTOSTAR:
@@ -2989,6 +3004,12 @@ int blockpresent(enum iofields blocknr)
             return 1;
 #endif
             break;
+
+        case IO_THERMAL_FB_STATE:
+#ifdef GALSF_FB_THERMAL
+            return 1;
+#endif
+            return 0;
 
         case IO_PROMPT_SN_STATE:
 #ifdef No_Delay_SN
@@ -3501,6 +3522,9 @@ void get_Tab_IO_Label(enum iofields blocknr, char *label)
         case IO_IMF:
             strncpy(label, "IMF ", 4);
             break;
+        case IO_THERMAL_FB_STATE:
+            strncpy(label, "TFBS", 4);
+            break;
         case IO_PROMPT_SN_STATE:
             strncpy(label, "PSNS", 4);
             break;
@@ -3933,6 +3957,9 @@ void get_dataset_name(enum iofields blocknr, char *buf)
             break;
         case IO_IMF:
             strcpy(buf, "IMFFormationProperties");
+            break;
+        case IO_THERMAL_FB_STATE:
+            strcpy(buf, "ThermalFeedbackDone");
             break;
         case IO_PROMPT_SN_STATE:
             strcpy(buf, "PromptSNState");

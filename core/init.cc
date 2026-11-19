@@ -290,7 +290,11 @@ void init(void)
             P[i].NewStar_Momentum_For_JetFeedback = 0;
 #endif
 #if defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_THERMAL)
+#ifdef GALSF_FB_THERMAL
+            if(RestartFlag != 2) {P[i].SNe_ThisTimeStep = 0;}
+#else
             P[i].SNe_ThisTimeStep = 0;
+#endif
 #endif
 #ifdef GALSF_FB_MECHANICAL
             int k; for(k=0;k<AREA_WEIGHTED_SUM_ELEMENTS;k++) {P[i].Area_weighted_sum[k] = 0;}

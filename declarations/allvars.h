@@ -1370,6 +1370,7 @@ enum iofields
   IO_MOLECULARFRACTION,
   IO_SHOCKMACHNUM,
   IO_PROMPT_SN_STATE,
+  IO_THERMAL_FB_STATE,
   IO_LASTENTRY			/* This should be kept - it signals the end of the list */
 };
 

@@ -15,22 +15,3 @@ Basic Rules:
 2. The code is free software, distributed under the [GNU General Public License](http://www.gnu.org/copyleft/gpl.html). You may freely distribute and copy it. You may also modify it as you wish, and distribute these modified versions as long as you indicate prominently any changes you made in the original code, and as long as you leave the copyright notices, and the no-warranty notice intact. Please read the General Public License for more details. Note that the authors retain their copyright on the code.
 
 If you use any version of the code, please reference the code paper, [Hopkins 2015, MNRAS, 450, 53](http://arxiv.org/abs/1409.7395), or more recent code-release papers appropriate to the version you are using, and the appropriate papers for the specific code modules/physics that you employ (these are explained in detail in the User Guide).
-
-### Thermal feedback delay
-
-With `GALSF_FB_THERMAL` enabled, the optional runtime parameter
-`ThermalFBDelayMyr` sets the stellar age threshold in physical Myr. It defaults
-to `5` when omitted, preserving the original AGORA timing. For prompt thermal
-feedback during pre-evolution, add to the parameter file:
-
-```text
-ThermalFBDelayMyr 0
-```
-
-Values must be finite and nonnegative. Feedback occurs on the first active
-feedback evaluation at or above this age, once per stellar particle. Changing
-the delay does not reset particles that have already injected feedback. The
-parameter can be changed when continuing from a restart; set it to `5` for the
-normal-delay phase. Recompile after this source change. Existing binary restart
-files from the old executable are incompatible with the changed global parameter
-structure; use a snapshot restart when migrating from the old executable.

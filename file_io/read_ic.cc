@@ -553,6 +553,17 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
 #endif
             break;
 
+        case IO_THERMAL_FB_STATE:
+#ifdef GALSF_FB_THERMAL
+            for(n = 0; n < pc; n++)
+            {
+                unsigned int value = ((unsigned int *)CommBuffer)[n];
+                if(value > 1) {terminate("Invalid ThermalFeedbackDone in stellar input particles.");}
+                P[offset + n].SNe_ThisTimeStep = value ? -1 : 0;
+            }
+#endif
+            break;
+
         case IO_PROMPT_SN_STATE:
 #ifdef No_Delay_SN
             for(n = 0; n < pc; n++)
@@ -1155,6 +1166,10 @@ void read_file(char *fname, int readTask, int lastTask)
                                     if(All.ICFormat == 3 && pc > 0)
                                     {
                                         get_dataset_name(blocknr, buf);
+#ifdef GALSF_FB_THERMAL
+                                        if(blocknr == IO_THERMAL_FB_STATE && H5Lexists(hdf5_grp[type], buf, H5P_DEFAULT) <= 0)
+                                        {terminate("Snapshot lacks ThermalFeedbackDone; thermal feedback history cannot be recovered safely. Use a binary restart to produce a new snapshot with this field.");}
+#endif
 #ifdef No_Delay_SN
                                         bool optional_dataset = blocknr == IO_PROMPT_SN_STATE ||
                                             (RestartFlag == 0 && (blocknr == IO_AGE || blocknr == IO_OSTAR));
